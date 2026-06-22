@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nova AI Chat</title>
+  <style>
+    :root{
+      --bg:#050816;--panel:rgba(13,19,39,.88);--border:rgba(255,255,255,.08);
+      --text:#edf3ff;--muted:#93a7cb;--accent:#5ce1e6;--accent2:#7c5cff;
+      --user:linear-gradient(135deg, rgba(124,92,255,.95), rgba(92,225,230,.55));
+      --shadow:0 20px 60px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);min-height:100vh;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(124,92,255,0.20), transparent 25%),
+        radial-gradient(circle at 85% 15%, rgba(92,225,230,0.18), transparent 22%),
+        radial-gradient(circle at 50% 80%, rgba(0,255,163,0.08), transparent 28%),
+        linear-gradient(180deg, #050816 0%, #070d1d 45%, #050816 100%);
+      overflow:hidden;
+    }
+    .noise{position:fixed; inset:0; pointer-events:none; opacity:.06;
+      background-image: radial-gradient(rgba(255,255,255,.5) .5px, transparent .5px);background-size:12px 12px;}
+    .app{display:grid;grid-template-columns:290px 1fr;height:100vh;position:relative;z-index:1}
+    .sidebar{background:rgba(8,12,25,.78);border-right:1px solid var(--border);backdrop-filter:blur(16px);padding:18px;display:flex;flex-direction:column;gap:18px}
+    .brand{display:flex;align-items:center;gap:14px;padding:8px 6px}
+    .brand-mark{width:48px;height:48px;border-radius:16px;position:relative;background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25), transparent 30%),
+        linear-gradient(135deg, rgba(124,92,255,.9), rgba(92,225,230,.9));
+      box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset,0 10px 30px rgba(92,225,230,.18),0 12px 30px rgba(124,92,255,.22);}
+    .brand-mark::before,.brand-mark::after{content:"";position:absolute;inset:10px;border:1px solid rgba(255,255,255,.18);border-radius:12px;transform:rotate(45deg)}
+    .brand-mark::after{inset:15px;border-color:rgba(255,255,255,.26)}
+    .brand h1{font-size:1.15rem;font-weight:800}.brand p{font-size:.88rem;color:var(--muted);margin-top:2px}
+    .new-chat{border:none;cursor:pointer;width:100%;padding:14px 16px;border-radius:18px;background:linear-gradient(135deg, var(--accent), #b8fff3);color:#08111c;font-weight:800;box-shadow:0 16px 40px rgba(92,225,230,.24)}
+    .sidebar-section h3{font-size:.85rem;color:#cfe0ff;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+    .history{display:flex;flex-direction:column;gap:10px}.history-item{padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);color:#dce7ff}
+    .history-item small{display:block;color:var(--muted);margin-top:4px;font-size:.82rem}
+    .sidebar-footer{margin-top:auto;padding:14px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);color:var(--muted);line-height:1.7;font-size:.9rem}
+    .sidebar-footer strong{color:var(--text)}
+    .main{display:flex;flex-direction:column;min-width:0}
+    .topbar{padding:18px 24px;border-bottom:1px solid var(--border);background:rgba(5,8,22,.42);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:space-between;gap:14px}
+    .topbar h2{font-size:1.1rem;font-weight:800}.topbar p{color:var(--muted);font-size:.92rem;margin-top:4px}
+    .status{padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);color:#d8e5ff;font-size:.9rem;white-space:nowrap}
+    .chat-area{flex:1;overflow:auto;padding:28px 24px 18px;display:flex;flex-direction:column;gap:18px}
+    .welcome{max-width:860px;margin:0 auto 6px;width:100%;padding:28px;border-radius:28px;background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)), rgba(13,19,39,.72);border:1px solid rgba(255,255,255,.08);box-shadow:var(--shadow)}
+    .welcome h3{font-size:2rem;line-height:1.1;margin-bottom:12px;letter-spacing:-.03em}.welcome p{color:var(--muted);line-height:1.8;max-width:68ch}
+    .suggestions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+    .suggestion{padding:12px 16px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);color:#dce7ff;cursor:pointer}
+    .messages{max-width:860px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+    .message{display:flex;gap:14px;align-items:flex-start}.message.user{justify-content:flex-end}.message.ai{justify-content:flex-start}
+    .avatar{width:42px;height:42px;border-radius:14px;flex-shrink:0;display:grid;place-items:center;font-weight:800;border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 24px rgba(0,0,0,.18)}
+    .avatar.ai{background:linear-gradient(135deg, rgba(92,225,230,.18), rgba(124,92,255,.22))}.avatar.user{background:linear-gradient(135deg, rgba(124,92,255,.88), rgba(92,225,230,.45))}
+    .bubble{max-width:min(80%,700px);padding:16px 18px;border-radius:20px;line-height:1.8;border:1px solid rgba(255,255,255,.08);box-shadow:var(--shadow);white-space:pre-wrap}
+    .bubble.ai{background:rgba(255,255,255,.04)} .bubble.user{background:var(--user)}
+    .composer-wrap{padding:18px 24px 24px;border-top:1px solid var(--border);background:linear-gradient(to top, rgba(5,8,22,.88), rgba(5,8,22,.45));backdrop-filter:blur(16px)}
+    .composer{max-width:860px;margin:0 auto;background:var(--panel);border:1px solid var(--border);border-radius:26px;padding:14px;display:flex;align-items:flex-end;gap:12px;box-shadow:var(--shadow)}
+    textarea{flex:1;min-height:56px;max-height:180px;resize:none;border:none;outline:none;background:transparent;color:var(--text);font:inherit;line-height:1.7;padding:8px 10px}
+    textarea::placeholder{color:var(--muted)}
+    .composer-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+    .send-btn{height:46px;padding:0 18px;border:none;cursor:pointer;border-radius:16px;background:linear-gradient(135deg, var(--accent), #b8fff3);color:#07111d;font-weight:800;box-shadow:0 14px 34px rgba(92,225,230,.24)}
+    .hint{max-width:860px;margin:10px auto 0;color:var(--muted);font-size:.86rem;line-height:1.7;padding:0 6px}
+    .typing{display:flex;gap:8px;align-items:center;padding:14px 16px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);width:max-content;margin-left:56px}
+    .typing span{width:8px;height:8px;border-radius:50%;background:var(--accent);display:block;animation:bounce 1.2s infinite ease-in-out;box-shadow:0 0 14px rgba(92,225,230,.6)}
+    .typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
+    @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.45}40%{transform:translateY(-6px);opacity:1}}
+    @media (max-width:980px){.app{grid-template-columns:1fr}.sidebar{display:none}}
+    @media (max-width:640px){.topbar,.chat-area,.composer-wrap{padding-left:14px;padding-right:14px}.welcome{padding:22px}.welcome h3{font-size:1.6rem}.bubble{max-width:100%}.message{gap:10px}.avatar{width:38px;height:38px}.typing{margin-left:48px}.composer{padding:10px;border-radius:22px}}
+  </style>
+</head>
+<body>
+<div class="noise"></div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark"></div><div><h1>Nova AI</h1><p>High-tech chat workspace</p></div></div>
+    <button class="new-chat" onclick="resetChat()">＋ New Chat</button>
+    <div class="sidebar-section">
+      <h3>Recent Chats</h3>
+      <div class="history">
+        <div class="history-item">Launch plan for startup <small>Today • 11:42 AM</small></div>
+        <div class="history-item">Physics light chapter revision <small>Yesterday</small></div>
+        <div class="history-item">Poster caption ideas <small>Yesterday</small></div>
+      </div>
+    </div>
+    <div class="sidebar-footer">Developed by <strong>Lumivox Studios</strong><br>Powered by <strong>Sufiyan Absar</strong></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div><h2>Nova AI Chat</h2><p>Ask anything. Plan faster. Think sharper.</p></div>
+      <div class="status">Groq API • Ready</div>
+    </div>
+
+    <section class="chat-area" id="chatArea">
+      <div class="welcome" id="welcomeBox">
+        <h3>Nova AI is live now.</h3>
+        <p>This page is wired to a Vercel serverless API route that talks to Groq. Add your <b>GROQ_API_KEY</b> in Vercel environment variables and it will start replying for real.</p>
+        <div class="suggestions">
+          <button class="suggestion" onclick="usePrompt('Summarize my study plan for this week.')">Study plan summary</button>
+          <button class="suggestion" onclick="usePrompt('Write a professional announcement for a new launch.')">Launch announcement</button>
+          <button class="suggestion" onclick="usePrompt('Give me 5 startup ideas in AI.')">5 AI startup ideas</button>
+          <button class="suggestion" onclick="usePrompt('Create a daily productivity routine.')">Productivity routine</button>
+        </div>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="message ai">
+          <div class="avatar ai">N</div>
+          <div class="bubble ai">Welcome to Nova AI. Ask me anything.</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="composer-wrap">
+      <div class="composer">
+        <textarea id="promptInput" placeholder="Message Nova AI..."></textarea>
+        <div class="composer-actions">
+          <button class="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+      <div class="hint">Backend route: <code>/api/chat</code> • Model default: <code>llama-3.3-70b-versatile</code></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const input = document.getElementById("promptInput");
+const messages = document.getElementById("messages");
+const welcomeBox = document.getElementById("welcomeBox");
+const chatArea = document.getElementById("chatArea");
+let isSending = false;
+
+function usePrompt(text){ input.value = text; input.focus(); autoResize(); }
+
+function createMessage(role, text){
+  const wrapper = document.createElement("div");
+  wrapper.className = "message " + role;
+  if(role === "ai"){
+    wrapper.innerHTML = `<div class="avatar ai">N</div><div class="bubble ai"></div>`;
+  } else {
+    wrapper.innerHTML = `<div class="bubble user"></div><div class="avatar user">U</div>`;
+  }
+  wrapper.querySelector(".bubble").textContent = text;
+  return wrapper;
+}
+
+function createTyping(){
+  const box = document.createElement("div");
+  box.className = "typing";
+  box.innerHTML = "<span></span><span></span><span></span>";
+  return box;
+}
+
+async function sendMessage(){
+  const text = input.value.trim();
+  if(!text || isSending) return;
+  isSending = true;
+  if(welcomeBox) welcomeBox.style.display = "none";
+
+  messages.appendChild(createMessage("user", text));
+  input.value = "";
+  autoResize();
+  const typing = createTyping();
+  messages.appendChild(typing);
+  scrollToBottom();
+
+  try{
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ message: text })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    typing.remove();
+
+    if(!res.ok){
+      const msg = data.error || "Request failed.";
+      messages.appendChild(createMessage("ai", "Error: " + msg));
+    } else {
+      messages.appendChild(createMessage("ai", data.reply || "No reply received."));
+    }
+  } catch(err){
+    typing.remove();
+    messages.appendChild(createMessage("ai", "Network error. Check deployment or API route."));
+  }
+
+  isSending = false;
+  scrollToBottom();
+}
+
+function resetChat(){
+  messages.innerHTML = `
+    <div class="message ai">
+      <div class="avatar ai">N</div>
+      <div class="bubble ai">New chat started. Drop your prompt and let’s get to work.</div>
+    </div>
+  `;
+  if(welcomeBox) welcomeBox.style.display = "block";
+  input.value = "";
+  autoResize();
+  scrollToBottom();
+}
+
+function scrollToBottom(){
+  requestAnimationFrame(() => { chatArea.scrollTop = chatArea.scrollHeight; });
+}
+
+function autoResize(){
+  input.style.height = "56px";
+  input.style.height = Math.min(input.scrollHeight, 180) + "px";
+}
+
+input.addEventListener("input", autoResize);
+input.addEventListener("keydown", (e) => {
+  if(e.key === "Enter" && !e.shiftKey){
+    e.preventDefault();
+    sendMessage();
+  }
+});
+</script>
+</body>
+</html>
